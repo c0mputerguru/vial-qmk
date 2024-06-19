@@ -5,12 +5,12 @@
 #define LED_LAYER_PIN A2
 #define NUM_LAYER     1
 
-void matrix_init_user(void) {
+void matrix_init_kb(void) {
   setPinOutput(LED_LAYER_PIN);
 }
 
 // Initialize your default layer
-layer_state_t layer_state_set_user(layer_state_t state) {
+layer_state_t layer_state_set_kb(layer_state_t state) {
   if (IS_LAYER_ON_STATE(state, NUM_LAYER)) {
     writePinLow(LED_LAYER_PIN);
   }
