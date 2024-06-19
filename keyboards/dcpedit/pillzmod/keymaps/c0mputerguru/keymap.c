@@ -1,4 +1,6 @@
 #include QMK_KEYBOARD_H
+#include "features/layer_lock.h"
+#include "features/select_word.h"
 
 
 enum layers {
@@ -92,6 +94,29 @@ const uint16_t PROGMEM encoder_map[][NUM_ENCODERS][NUM_DIRECTIONS] = {
 	[1] = {ENCODER_CCW_CW(_______, _______)}
 };
 #endif // defined(ENCODER_ENABLE) && defined(ENCODER_MAP_ENABLE)
+
+void matrix_scan_user(void) {
+    layer_lock_task();
+}
+
+bool process_record_user(uint16_t keycode, keyrecord_t *record) {
+
+    if (!process_layer_lock(keycode, record, LLOCK)) {
+        return false;
+    }
+
+    if (!process_select_word(keycode, record, SELWORD)) {
+        return false;
+    }
+    return true;
+}
+
+// Need to override so that mod tap keys get auto shifted as well.
+bool get_custom_auto_shifted_key(uint16_t keycode, keyrecord_t *record) {
+    if (IS_RETRO(keycode))
+        return true;
+    return false;
+}
 
 layer_state_t default_layer_state_set_user(layer_state_t state) {
     if(layer_state_cmp(state, ORIG)) {
