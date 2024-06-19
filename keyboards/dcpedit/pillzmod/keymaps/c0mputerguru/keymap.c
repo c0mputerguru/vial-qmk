@@ -132,6 +132,7 @@ layer_state_t default_layer_state_set_user(layer_state_t state) {
 
 void matrix_init_user(void) {
     setPinOutput(LED_NUM_LAYER_PIN);
+    setPinOutput(LED_NAV_LAYER_PIN);
 }
 
 // Initialize your default layer
