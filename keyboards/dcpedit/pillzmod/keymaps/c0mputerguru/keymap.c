@@ -126,3 +126,27 @@ layer_state_t default_layer_state_set_user(layer_state_t state) {
     }
     return state;
 }
+
+#define LED_NUM_LAYER_PIN A2
+#define LED_NAV_LAYER_PIN A1
+
+void matrix_init_user(void) {
+    setPinOutput(LED_NUM_LAYER_PIN);
+}
+
+// Initialize your default layer
+layer_state_t layer_state_set_user(layer_state_t state) {
+    if (IS_LAYER_ON_STATE(state, NUM)) {
+        writePinLow(LED_NUM_LAYER_PIN);
+    } else {
+        writePinHigh(LED_NUM_LAYER_PIN);
+    }
+
+    if (IS_LAYER_ON_STATE(state, NAV)) {
+        writePinLow(LED_NAV_LAYER_PIN);
+    } else {
+        writePinHigh(LED_NAV_LAYER_PIN);
+    }
+
+    return state;
+}
