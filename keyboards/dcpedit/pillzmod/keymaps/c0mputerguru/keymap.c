@@ -64,3 +64,12 @@ const uint16_t PROGMEM encoder_map[][NUM_ENCODERS][NUM_DIRECTIONS] = {
 	[1] = {ENCODER_CCW_CW(_______, _______)}
 };
 #endif // defined(ENCODER_ENABLE) && defined(ENCODER_MAP_ENABLE)
+
+layer_state_t default_layer_state_set_user(layer_state_t state) {
+    if(layer_state_cmp(state, ORIG)) {
+        autoshift_disable();
+    } else {
+        autoshift_enable();
+    }
+    return state;
+}
