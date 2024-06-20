@@ -18,7 +18,8 @@
         "bootmagic": true,
         "encoder": true,
         "extrakey": true,
-        "mousekey": true
+        "mousekey": true,
+        "nkro": true
     },
     "indicators": {
         "caps_lock": "B9",
