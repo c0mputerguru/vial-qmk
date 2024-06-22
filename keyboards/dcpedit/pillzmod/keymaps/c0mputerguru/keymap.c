@@ -36,6 +36,19 @@ enum c0mputerguru_keycodes {
 #define COPY C(KC_C)
 #define PASTE C(KC_V)
 
+// Number of LEDs on the keyboard.
+#define NUM_LEDS  4
+// Period for LED_BLINK_FAST blinking. Smaller value implies faster.
+#define LED_BLINK_FAST_PERIOD_MS  300
+
+// Possible LED states.
+enum { LED_OFF = 0, LED_ON = 1, LED_BLINK_SLOW = 2, LED_BLINK_FAST = 3 };
+static uint8_t led_blink_state[NUM_LEDS] = {0};
+
+#define LED_CAPS_LOCK_PIN B9
+#define LED_NUM_LOCK_PIN A0
+#define LED_SCROLL_LOCK_PIN A1
+#define LED_NUM_LAYER_PIN A2
 
 const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
 	[CUST] = LAYOUT(
@@ -95,6 +108,26 @@ const uint16_t PROGMEM encoder_map[][NUM_ENCODERS][NUM_DIRECTIONS] = {
 };
 #endif // defined(ENCODER_ENABLE) && defined(ENCODER_MAP_ENABLE)
 
+static uint8_t get_layer_indicator(layer_state_t changed_state, bool is_default_change) {
+    layer_state_t overall_layer = changed_state;
+    if (is_default_change) {
+        overall_layer |= layer_state;
+    } else {
+        overall_layer |= default_layer_state;
+    }
+
+    switch (get_highest_layer(overall_layer)) {
+        case CUST:
+            return LED_OFF;
+        case NUM:
+            return LED_BLINK_SLOW;
+        case NAV:
+            return LED_BLINK_FAST;
+        default:
+            return LED_ON;
+    }
+}
+
 void matrix_scan_user(void) {
     layer_lock_task();
 }
@@ -124,30 +157,73 @@ layer_state_t default_layer_state_set_user(layer_state_t state) {
     } else {
         autoshift_enable();
     }
+    led_blink_state[3] = get_layer_indicator(state, true);
     return state;
 }
 
-#define LED_NUM_LAYER_PIN A2
-#define LED_NAV_LAYER_PIN A1
+void keyboard_post_init_user(void) {
+    uint32_t led_blink_callback(uint32_t trigger_time, void *cb_arg) {
+        static const uint8_t pattern[4] = {0x00, 0xff, 0x0f, 0xaa};
+        static uint8_t       phase      = 0;
+        phase                           = (phase + 1) % 8;
+
+        uint8_t bit = 1 << phase;
+        // Adjust according to keyboard. See notes below.
+        writePin(LED_CAPS_LOCK_PIN, (pattern[led_blink_state[0]] & bit) == 0);
+        writePin(LED_NUM_LOCK_PIN, (pattern[led_blink_state[1]] & bit) == 0);
+        writePin(LED_SCROLL_LOCK_PIN, (pattern[led_blink_state[2]] & bit) == 0);
+        writePin(LED_NUM_LAYER_PIN, (pattern[led_blink_state[3]] & bit) == 0);
+
+        return LED_BLINK_FAST_PERIOD_MS / 2;
+    }
+
+    defer_exec(1, led_blink_callback, NULL);
+}
 
 void matrix_init_user(void) {
+    setPinOutput(LED_CAPS_LOCK_PIN);
+    setPinOutput(LED_NUM_LOCK_PIN);
+    setPinOutput(LED_SCROLL_LOCK_PIN);
     setPinOutput(LED_NUM_LAYER_PIN);
-    setPinOutput(LED_NAV_LAYER_PIN);
 }
 
-// Initialize your default layer
 layer_state_t layer_state_set_user(layer_state_t state) {
-    if (IS_LAYER_ON_STATE(state, NUM)) {
-        writePinLow(LED_NUM_LAYER_PIN);
-    } else {
-        writePinHigh(LED_NUM_LAYER_PIN);
-    }
-
-    if (IS_LAYER_ON_STATE(state, NAV)) {
-        writePinLow(LED_NAV_LAYER_PIN);
-    } else {
-        writePinHigh(LED_NAV_LAYER_PIN);
-    }
-
+    led_blink_state[3] = get_layer_indicator(state, false);
     return state;
+}
+
+static bool is_caps_lock_on = false;
+
+static void update_caps_indicator(void) {
+    if (is_caps_lock_on) {
+        led_blink_state[0] = LED_ON;
+    } else if (is_caps_word_on()) {
+        led_blink_state[0] = LED_BLINK_FAST;
+    } else {
+        led_blink_state[0] = LED_OFF;
+    }
+}
+
+bool led_update_user(led_t led_state) {
+    is_caps_lock_on = led_state.caps_lock;
+    update_caps_indicator();
+
+    if (led_state.num_lock) {
+        led_blink_state[1] = LED_ON;
+    } else {
+        led_blink_state[1] = LED_OFF;
+    }
+
+    // Could use scroll lock led for something else as it's not really ever used.
+    if (led_state.scroll_lock) {
+        led_blink_state[2] = LED_ON;
+    } else {
+        led_blink_state[2] = LED_OFF;
+    }
+
+    return true;
+}
+
+void caps_word_set_user(bool active) {
+    update_caps_indicator();
 }
